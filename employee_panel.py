@@ -20,6 +20,7 @@ class EmployeePanel(tk.Frame):
         self.cart = []
         self.pickup_data = None
         self.placement_info = None
+        self.session_generator = None
         self.checkboxes = []  # List to hold checkbox widgets
         self.checkbox_vars = []  # List to hold the variables associated with checkboxes
         self.current_index = 0
@@ -185,6 +186,7 @@ class EmployeePanel(tk.Frame):
         # get data of items and placement
         self.pickup_data = {item[1]: (item[3], item[5]) for item in self.cart}
         self.placement_info = database.get_rack_and_position(tuple(self.pickup_data.keys()))
+        self.session_generator = iter(self.placement_info.items())
 
         # Connect ot MQTT Server
         self.mqtt_client = connect_mqtt(mqtt_server=MQTT_SERVER, mqtt_port=MQTT_PORT)
@@ -247,8 +249,8 @@ class EmployeePanel(tk.Frame):
         self.session_button = tk.Button(self.send_cmd_frame, text="Start Session", width=15, command=lambda: self.session_control("start"))
         self.session_button.pack(side=tk.LEFT, padx=(20, 0))
 
-        self.next_button = tk.Button(self.send_cmd_frame, text="Terminate Session", width=15, command=lambda: self.session_control("terminate"))
-        self.next_button.pack(side=tk.RIGHT, padx=(0, 20))
+        self.terminate_btn = tk.Button(self.send_cmd_frame, text="Terminate Session", width=15, command=lambda: self.session_control("terminate"))
+        self.terminate_btn.pack(side=tk.RIGHT, padx=(0, 20))
 
     def switch_frame(self, frame):
         for widget in self.container_frame.winfo_children():
@@ -354,6 +356,41 @@ class EmployeePanel(tk.Frame):
     def update_scroll_region(self, event):
         # Update the scroll region to encompass the inner frame
         self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+
+    def session_control(self, action):
+        if action == "start" or action == "next":
+            if self.current_command:
+                topic, message = self.current_command
+                handle_publish(client=self.mqtt_client, topic=topic, message=message.replace(", 1)", ", 0)"))  # Send close command for current
+                # change the status of the checkbox
+                self.check_checkboxes()
+            try:
+                item_id, (rack, pos_label) = next(self.session_generator)
+                self.pickup_data_label.config(text=f"Collect {self.pickup_data[str(item_id)][0]}\nat {rack} Quantity = {self.pickup_data[str(item_id)][1]}")
+                topic = f"smart_vault/{rack}"
+                open_message = f"('{pos_label}', 1)"
+                self.current_command = (topic, open_message)
+                handle_publish(client=self.mqtt_client, topic=topic, message=open_message)  # Send open command for next
+                self.session_button.config(text="Next")
+            except StopIteration:
+                self.session_button.config(text="Session Ended", state="disabled")
+                self.terminate_btn.config(text="Session Terminated", state="disabled")
+                self.terminate_btn.config(state="disabled")  # Disable terminate button at end
+                self.session_button.config(state="disabled")  # Also disable start session button
+        elif action == "terminate":
+            if self.current_command:
+                topic, message = self.current_command
+                handle_publish(client=self.mqtt_client, topic=topic, message=message.replace(", 1)", ", 0)"))  # Ensure current is closed
+            self.terminate_btn.config(text="Session Terminated", state="disabled")
+            self.terminate_btn.config(state="disabled")
+            self.session_button.config(state="disabled")  # Disable start session button on terminate
+
+    def check_checkboxes(self):
+        if self.current_index < len(self.checkboxes):
+            # Check and disable the current checkbox
+            self.checkbox_vars[self.current_index].set(True)
+            self.checkboxes[self.current_index].configure(state='disabled')
+            self.current_index += 1  # Move to the next checkbox
 
     def exit(self):
         if msgbox.confirm_exit():
