@@ -394,9 +394,7 @@ class EmployeePanel(tk.Frame):
 
     def exit(self):
         if msgbox.confirm_exit():
-            self.destroy()
-        login_panel = LoginPanel(root)
-        login_panel.pack()
+            root.destroy()
 
 
 # If this file is run directly for testing purposes
