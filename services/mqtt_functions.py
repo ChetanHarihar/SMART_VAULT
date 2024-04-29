@@ -44,7 +44,7 @@ def connect_mqtt(mqtt_server, mqtt_port):
     return client
 
 if __name__ == "__main__":
-    MQTT_SERVER = '192.168.77.10'
+    MQTT_SERVER = '192.168.144.10'
     MQTT_PORT = 1883
 
     # Example usage
