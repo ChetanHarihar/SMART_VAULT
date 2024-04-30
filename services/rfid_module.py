@@ -1,15 +1,15 @@
-# rfid_module.py
 import RPi.GPIO as GPIO
 from mfrc522 import SimpleMFRC522
 import sqlite3
+import threading
+import queue
 
 # Setup GPIO warnings
 GPIO.setwarnings(False)
 
 def scan_rfid(q):
     """
-    Clears the queue and then scans an RFID tag using the RFID reader, 
-    putting the result into the queue.
+    Scans an RFID tag using the RFID reader, putting the result into the queue.
 
     Args:
     q (queue.Queue): The queue to put the scan result.
@@ -54,22 +54,25 @@ def check_scan_result(q, role):
 
             if fetched_result is not None and fetched_result[-1] == role:
                 print("Access Granted")
-                return True
+                return fetched_result
             else:
                 print("Authentication Failed")
-                return False
+                return None
         else:
             return False
     except queue.Empty:
         return False
 
-
 if __name__ == "__main__":
-    import queue
-    import time
-    
     test_queue = queue.Queue()
 
-    scan_rfid(q=test_queue)
+    # Creating and starting the RFID scanning thread
+    scan_thread = threading.Thread(target=scan_rfid, args=(test_queue,))
+    scan_thread.start()
 
-    check_scan_result(q=test_queue, role=1)
+    # Waiting for the scanning thread to complete
+    scan_thread.join()
+
+    # Checking the scan result
+    user_data = check_scan_result(q=test_queue, role=2)
+    print(user_data)
