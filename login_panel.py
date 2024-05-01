@@ -1,4 +1,8 @@
 import tkinter as tk
+from tkinter import ttk
+from settings.config import *
+import os
+from employee_panel import EmployeePanel
 from gui_components.widgets.buttons import RoleButton  
 from gui_components.frames.login_frame import LoginPage
 from gui_components.frames.scan_frames import ScanFrame
@@ -7,13 +11,17 @@ from services.rfid_module import scan_rfid, check_scan_result
 import threading
 import queue
 
+
 class LoginPanel(tk.Frame):
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
         self.config(width=800, height=480)
+        self.root = master
         self.role = None
         self.scan_data = queue.Queue()
         self.user_data = None
+        self.employee_panel = EmployeePanel(self.root)
+        self.admin_panel = None
         self.init_ui()
 
     def init_ui(self):
@@ -54,33 +62,58 @@ class LoginPanel(tk.Frame):
         scan_rfid(self.scan_data)  # Perform RFID scanning
         
         # Get the result after scanning
-        result = check_scan_result(q=self.scan_data, role=self.role)
+        self.user_data = check_scan_result(q=self.scan_data, role=self.role)
 
         # Handle the result
-        self.handle_scan_result(result)
+        self.handle_scan_result(data=self.user_data)
 
-    def handle_scan_result(self, result):
-        if result:
+    def handle_scan_result(self, data):
+        if data:
+            self.success_frame.result_label.config(text=f"Access Granted\nLogged in as {self.user_data[1]}")
             self.scan_frame.pack_forget()
             self.success_frame.pack()
             # Display the employee or admin panel
+            self.after(3000, self.load_panel)
         else:
             self.scan_frame.pack_forget()
             self.failed_frame.pack()
             # Restart scan after 5 seconds
-            self.after(5000, self.restart_scan)
+            self.after(3000, self.restart_scan)
 
     def restart_scan(self):
         self.failed_frame.pack_forget()
         self.login_frame.pack()  # Display login frame again
 
+    def load_panel(self):
+        if self.role == 1:
+            # load admin panel
+            pass
+        elif self.role == 2:
+            # load employee panel
+            self.destroy()
+            self.employee_panel.user_label.config(text=f"Logged in as: {self.user_data[1]}")
+            self.employee_panel.pack()
+
+    def update_datetime(self):
+        self.employee_panel.nav_bar.update_datetime()
+
 
 # If this file is run directly for testing purposes
 if __name__ == "__main__":
     root = tk.Tk()
+    root.geometry(SCREEN_SIZE)
+    style = ttk.Style(root)
+
+    # build the path to the theme file
+    theme_path = os.path.join("/home/pi/Python/SMART_VAULT", "theme", "forest-light.tcl")
+
+    root.tk.call("source", theme_path)
+    style.theme_use("forest-light")
     
     # Create an instance of LoginPage and pack it into the root window
     main_frame = LoginPanel(root)
     main_frame.pack()
     
+    main_frame.update_datetime()
+
     root.mainloop()

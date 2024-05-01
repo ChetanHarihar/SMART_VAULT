@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 import os
-from login_panel import LoginPanel
 from gui_components.widgets.buttons import ExitButton
 from gui_components.widgets.treeview import TreeView
 from gui_components.frames.nav_bar import NavBar
@@ -14,6 +13,7 @@ class EmployeePanel(tk.Frame):
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
         self.config(width=800, height=480)
+        self.root = master
         self.role = None
         self.category_data = database.fetch_categories()
         self.item_data = database.fetch_all_items(self.category_data)
@@ -224,10 +224,10 @@ class EmployeePanel(tk.Frame):
 
         # Add item labels and checkboxes inside the frame
         for i , k in enumerate(self.placement_info.keys(), 1):
-            item_label = tk.Label(self.grid_container, text=self.pickup_data[str(k)][0], font=("Arial", 10), bg="white", width=38)
+            item_label = tk.Label(self.grid_container, text=self.pickup_data[str(k)][0], font=("Arial", 8), bg="red", width=45)
             item_label.grid(row=i, column=0, sticky="w")
 
-            quantity_label = tk.Label(self.grid_container, text=self.pickup_data[str(k)][1], font=("Arial", 10), bg="white", width=9)
+            quantity_label = tk.Label(self.grid_container, text=self.pickup_data[str(k)][1], font=("Arial", 8), bg="red", width=9)
             quantity_label.grid(row=i, column=1, sticky="w")
             
             var = tk.BooleanVar(value=False)
@@ -394,7 +394,10 @@ class EmployeePanel(tk.Frame):
 
     def exit(self):
         if msgbox.confirm_exit():
-            root.destroy()
+            self.root.destroy()
+
+    def update_datetime(self):
+        self.nav_bar.update_datetime()
 
 
 # If this file is run directly for testing purposes
@@ -413,6 +416,6 @@ if __name__ == "__main__":
     main_frame = EmployeePanel(root)
     main_frame.pack()
 
-    main_frame.nav_bar.update_datetime()
+    main_frame.update_datetime()
     
     root.mainloop()
