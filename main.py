@@ -19,5 +19,7 @@ if __name__ == "__main__":
     # Create an instance of LoginPanel and pack it into the root window
     app = LoginPanel(root)
     app.pack()
+
+    app.update_datetime()
     
     root.mainloop()
