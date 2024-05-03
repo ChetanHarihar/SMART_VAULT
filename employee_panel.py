@@ -224,10 +224,10 @@ class EmployeePanel(tk.Frame):
 
         # Add item labels and checkboxes inside the frame
         for i , k in enumerate(self.placement_info.keys(), 1):
-            item_label = tk.Label(self.grid_container, text=self.pickup_data[str(k)][0], font=("Arial", 8), bg="red", width=45)
+            item_label = tk.Label(self.grid_container, text=self.pickup_data[str(k)][0], font=("Arial", 8), bg="white", width=45)
             item_label.grid(row=i, column=0, sticky="w")
 
-            quantity_label = tk.Label(self.grid_container, text=self.pickup_data[str(k)][1], font=("Arial", 8), bg="red", width=9)
+            quantity_label = tk.Label(self.grid_container, text=self.pickup_data[str(k)][1], font=("Arial", 8), bg="white", width=9)
             quantity_label.grid(row=i, column=1, sticky="w")
             
             var = tk.BooleanVar(value=False)
