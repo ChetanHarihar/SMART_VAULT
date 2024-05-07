@@ -7,6 +7,7 @@ from gui_components.frames.nav_bar import NavBar
 from gui_components.widgets import msgbox
 from services import database
 from services.mqtt_functions import connect_mqtt, handle_publish
+from services.data_logger import log_data
 from settings.config import *
 
 class EmployeePanel(tk.Frame):
@@ -14,9 +15,10 @@ class EmployeePanel(tk.Frame):
         super().__init__(master, **kwargs)
         self.config(width=800, height=480)
         self.root = master
-        self.role = None
         self.category_data = database.fetch_categories()
         self.item_data = database.fetch_all_items(self.category_data)
+        self.user_name = None
+        self.user_id = None
         self.cart = []
         self.pickup_data = None
         self.placement_info = None
@@ -25,6 +27,8 @@ class EmployeePanel(tk.Frame):
         self.checkbox_vars = []  # List to hold the variables associated with checkboxes
         self.current_index = 0
         self.current_command = None
+        self.data_to_log = None
+        self.update_item_data = None
         self.init_ui()
 
     def init_ui(self):
@@ -184,7 +188,7 @@ class EmployeePanel(tk.Frame):
 
     def load_pickup_frame(self):
         # get data of items and placement
-        self.pickup_data = {item[1]: (item[3], item[5]) for item in self.cart}
+        self.pickup_data = {item[1]: (item[3], item[5], item[2]) for item in self.cart}
         self.placement_info = database.get_rack_and_position(tuple(self.pickup_data.keys()))
         self.session_generator = iter(self.placement_info.items())
 
@@ -364,9 +368,13 @@ class EmployeePanel(tk.Frame):
                 handle_publish(client=self.mqtt_client, topic=topic, message=message.replace(", 1)", ", 0)"))  # Send close command for current
                 # change the status of the checkbox
                 self.check_checkboxes()
+                log_data(self.data_to_log)
+                database.update_item_quantity(self.update_item_data[0], int(self.update_item_data[1]))
             try:
                 item_id, (rack, pos_label) = next(self.session_generator)
                 self.pickup_data_label.config(text=f"Collect {self.pickup_data[str(item_id)][0]}\nat {rack} Quantity = {self.pickup_data[str(item_id)][1]}")
+                self.data_to_log = [self.user_name, self.pickup_data[str(item_id)][2], self.pickup_data[str(item_id)][0], self.pickup_data[str(item_id)][1]]
+                self.update_item_data = [str(item_id), self.pickup_data[str(item_id)][1]]
                 topic = f"smart_vault/{rack}"
                 open_message = f"('{pos_label}', 1)"
                 self.current_command = (topic, open_message)

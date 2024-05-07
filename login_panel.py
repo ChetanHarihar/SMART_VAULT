@@ -92,6 +92,8 @@ class LoginPanel(tk.Frame):
             # load employee panel
             self.destroy()
             self.employee_panel.user_label.config(text=f"Logged in as: {self.user_data[1]}")
+            self.employee_panel.user_id = self.user_data[0]
+            self.employee_panel.user_name = self.user_data[1]
             self.employee_panel.pack()
 
     def update_datetime(self):

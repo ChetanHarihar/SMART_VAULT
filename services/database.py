@@ -80,3 +80,28 @@ def get_rack_and_position(item_ids):
     # Sort the dictionary by the rack part first, then the label part
     # and return the sorted dictionary
     return {k: v for k, v in sorted(results_dict.items(), key=lambda item: (item[1][0], item[1][1]))}
+
+def update_item_quantity(item_id, subtract_amount):
+    conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+    cursor = conn.cursor()
+    
+    try:
+        # Fetch the current quantity of the item
+        cursor.execute('SELECT quantity FROM item WHERE id = ?', (item_id,))
+        result = cursor.fetchone()
+        
+        current_quantity, = result
+        
+        new_quantity = current_quantity - subtract_amount
+        
+        # Update the item with the new quantity
+        cursor.execute('UPDATE item SET quantity = ? WHERE id = ?', (new_quantity, item_id))
+        conn.commit()
+    
+    except sqlite3.Error as e:
+        print("An error occurred:", e)
+        conn.rollback()  # Rollback any changes if something goes wrong
+    
+    finally:
+        # Always close the connection to the database
+        conn.close()
