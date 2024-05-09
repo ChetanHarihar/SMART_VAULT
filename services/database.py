@@ -105,3 +105,67 @@ def update_item_quantity(item_id, subtract_amount):
     finally:
         # Always close the connection to the database
         conn.close()
+
+def get_user_details():
+    conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/employee_info.db')
+    cursor = conn.cursor()
+
+    try:
+        # Select all user details from the employee table
+        cursor.execute("SELECT * FROM employee")
+        employees = cursor.fetchall()
+
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
+
+        return employees
+
+    except sqlite3.Error as e:
+        print("Error fetching employee details:", e)
+
+def add_user(name, uid, role):
+    try:
+        # Connect to the SQLite database
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/employee_info.db')
+        cursor = conn.cursor()
+
+        # Insert new user data
+        cursor.execute("INSERT INTO employee (name, uid, role) VALUES (?, ?, ?)", (name, uid, role))
+        conn.commit()
+
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
+
+        return True, "User added successfully."
+
+    except sqlite3.IntegrityError as e:
+        if "UNIQUE constraint failed" in str(e):
+            error_message = "A user with the provided UID already exists."
+        elif "NOT NULL constraint failed" in str(e):
+            error_message = "Name, UID, or Role cannot be left empty."
+        else:
+            error_message = f"Integrity error: {e}"
+        
+        return False, f"Error adding user: {error_message}"
+
+    except sqlite3.Error as e:
+        return False, f"Error adding user: {e}"
+
+def remove_user_by_id(employee_id):
+    conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/employee_info.db')
+    cursor = conn.cursor()
+    try:
+        # Remove the employee with the specified ID
+        cursor.execute("DELETE FROM employee WHERE id = ?", (employee_id,))
+        conn.commit()
+
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
+
+        print(f"Employee with ID {employee_id} removed successfully.")
+
+    except sqlite3.Error as e:
+        print("Error removing employee:", e)
