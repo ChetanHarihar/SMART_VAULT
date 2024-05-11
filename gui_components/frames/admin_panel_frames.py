@@ -77,7 +77,103 @@ class InventoryManagement(tk.Frame):
         self.init_ui()
 
     def init_ui(self):
-        pass
+        # Create a Notebook widget
+        self.notebook = ttk.Notebook(self)
+
+        # Create and add tabs
+        self.add = ttk.Frame(self.notebook)
+        self.manage = ttk.Frame(self.notebook)
+        self.stock_details = ttk.Frame(self.notebook)
+        self.restock = ttk.Frame(self.notebook)
+
+        self.notebook.add(self.add, text="Add")
+        self.notebook.add(self.manage, text="Manage")
+        self.notebook.add(self.stock_details, text="Stock Details")
+        self.notebook.add(self.restock, text="Restock")
+
+        # Pack the Notebook widget 
+        self.notebook.pack(fill="both", expand=True)
+
+        # create label frames for adding category, item and machine
+        self.category_label_frame = tk.LabelFrame(self.add, text="Add Category", width=590, height=100)
+        self.category_label_frame.pack_propagate(False)
+        self.category_label_frame.pack(pady=(15,0))
+
+        self.cat_label = tk.Label(self.category_label_frame, text="Category Name:")
+        self.cat_label.pack(side="left", padx=(5,5))
+
+        self.cat_entry = tk.Entry(self.category_label_frame, width=25)
+        self.cat_entry.pack(side="left", padx=(5,5))
+
+        self.cat_add_btn = tk.Button(self.category_label_frame, text="Add", command=None)
+        self.cat_add_btn.pack(side="left", padx=(5,5))
+
+        self.item_label_frame = tk.LabelFrame(self.add, text="Add Item", width=590, height=100)
+        self.item_label_frame.pack_propagate(False)
+        self.item_label_frame.pack(pady=(15,0))
+
+        self.item_widget_frame = tk.Frame(self.item_label_frame)
+        self.item_widget_frame.pack(side="left", padx=(5,5))
+
+        self.cat_item_label = tk.Label(self.item_widget_frame, text="Category Name:")
+        self.cat_item_label.grid(row=0,column=0,sticky='w')
+
+        self.cat_item_entry = tk.Entry(self.item_widget_frame, width=25)
+        self.cat_item_entry.grid(row=0,column=1)
+
+        self.item_label = tk.Label(self.item_widget_frame, text="Item Name:")
+        self.item_label.grid(row=1,column=0,sticky='w')
+
+        self.item_entry = tk.Entry(self.item_widget_frame, width=30)
+        self.item_entry.grid(row=1,column=1)
+
+        self.item_add_btn = tk.Button(self.item_label_frame, text="Add", command=None)
+        self.item_add_btn.pack(side="left", padx=(5,5))
+
+        self.machine_label_frame = tk.LabelFrame(self.add, text="Add Machine", width=590, height=100)
+        self.machine_label_frame.pack_propagate(False)
+        self.machine_label_frame.pack(pady=(15,0))
+
+        self.mac_label = tk.Label(self.machine_label_frame, text="Machine Name:")
+        self.mac_label.pack(side="left", padx=(5,5))
+
+        self.mac_entry = tk.Entry(self.machine_label_frame, width=25)
+        self.mac_entry.pack(side="left", padx=(5,5))
+
+        self.mac_add_btn = tk.Button(self.machine_label_frame, text="Add", command=None)
+        self.mac_add_btn.pack(side="left", padx=(5,5))
+
+        self.manage_main_frame = tk.Frame(self.manage)
+        self.manage_main_frame.pack_propagate(False)
+        self.manage_main_frame.pack(fill="both", expand=True)
+
+        self.manage_btns_frame = tk.Frame(self.manage_main_frame)
+        self.manage_btns_frame.pack()
+
+        self.cat_view_btn = tk.Button(self.manage_btns_frame, text="View Categories", command=lambda: self.switch_view(self.cat_view_frame))
+        self.cat_view_btn.pack(side='left')
+
+        self.item_view_btn = tk.Button(self.manage_btns_frame, text="View Items", command=lambda: self.switch_view(self.item_view_frame))
+        self.item_view_btn.pack(side='left')
+
+        self.mac_view_btn = tk.Button(self.manage_btns_frame, text="View Machines", command=lambda: self.switch_view(self.mac_view_frame))
+        self.mac_view_btn.pack(side='left')
+
+        self.manage_view_frame = tk.Frame(self.manage_main_frame)
+        self.manage_view_frame.pack(pady=(10,10))
+
+        self.cat_view_frame = tk.Frame(self.manage_view_frame)
+        self.cat_view_frame.pack()
+
+        self.item_view_frame = tk.Frame(self.manage_view_frame)
+
+        self.mac_view_frame = tk.Frame(self.manage_view_frame)
+
+    def switch_view(self, view):
+        for widget in self.manage_view_frame.winfo_children():
+            widget.forget()
+        view.pack()
+
 
 # If this file is run directly for testing purposes
 if __name__ == "__main__":

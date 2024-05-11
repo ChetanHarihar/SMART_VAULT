@@ -1,92 +1,121 @@
 import sqlite3
 
 def fetch_categories():
-    conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
-    cursor = conn.cursor()
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
 
-    cursor.execute('''
-                   SELECT name FROM category
-    ''')
-    
-    categories = cursor.fetchall()
-    conn.close()
-    # Extract category names from the list of tuples
-    category_names = [category[0] for category in categories]
-    return category_names
+        cursor.execute('''
+                       SELECT name FROM category
+        ''')
+        
+        categories = cursor.fetchall()
+        category_names = [category[0] for category in categories]
+        return category_names
+
+    except sqlite3.Error as e:
+        print("SQLite error:", e)
+        return []
+
+    finally:
+        if conn:
+            conn.close()
+
+def get_category_id_by_name(category_name):
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM category WHERE name = ?", (category_name,))
+        result = cursor.fetchone()
+
+        if result:
+            category_id = result[0]
+            print(f"Category ID for '{category_name}' is {category_id}.")
+            return category_id
+        else:
+            print(f"No category found with the name '{category_name}'.")
+            return None
+
+    except sqlite3.Error as e:
+        print("Error retrieving category ID:", e)
+        return None
+
+    finally:
+        cursor.close()
+        conn.close()
 
 def fetch_all_items(categories):
-    conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
-    cursor = conn.cursor()
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
 
-    all_items = {}
+        all_items = {}
 
-    for category in categories:
-        cursor.execute('''
-                        SELECT Item.id AS ItemID, category.name AS CategoryName, item.item_size AS ItemSize, item.quantity AS Quantity
-                        FROM item
-                        INNER JOIN category ON item.category_id = category.id
-                        WHERE category.name = ?
-            ''', (category,))
-        
-        items = cursor.fetchall()
-        all_items[category] = items
+        for category in categories:
+            cursor.execute('''
+                            SELECT Item.id AS ItemID, category.name AS CategoryName, item.item_size AS ItemSize, item.quantity AS Quantity
+                            FROM item
+                            INNER JOIN category ON item.category_id = category.id
+                            WHERE category.name = ?
+                ''', (category,))
+            
+            items = cursor.fetchall()
+            all_items[category] = items
 
-    conn.close()
-    return all_items
+        return all_items
+
+    except sqlite3.Error as e:
+        print("SQLite error:", e)
+        return {}
+
+    finally:
+        if conn:
+            conn.close()
 
 def get_rack_and_position(item_ids):
-    # Initialize an empty dictionary to hold the results
     results_dict = {}
-    
-    # Connect to the SQLite database
-    conn = sqlite3.connect("/home/pi/Python/SMART_VAULT/smartvault.db")
-    cursor = conn.cursor()
-    
-    
-    # SQL query to fetch item ID, rack name, and position label for specified item IDs
-    query = f"""
-    SELECT
-        ip.item_id,
-        r.name AS RackName,
-        rp.position_label AS PositionLabel
-    FROM
-        item_placement ip
-    INNER JOIN
-        rack_position rp ON ip.rack_position_id = rp.id
-    INNER JOIN
-        rack r ON rp.rack_id = r.id
-    WHERE
-        ip.item_id IN ({','.join('?'*len(item_ids))});
-    """
-    
+    conn = None
     try:
-        # Execute the query with the item_ids_tuple
-        cursor.execute(query, item_ids)
+        conn = sqlite3.connect("/home/pi/Python/SMART_VAULT/smartvault.db")
+        cursor = conn.cursor()
         
-        # Fetch all results
+        query = f"""
+        SELECT
+            ip.item_id,
+            r.name AS RackName,
+            rp.position_label AS PositionLabel
+        FROM
+            item_placement ip
+        INNER JOIN
+            rack_position rp ON ip.rack_position_id = rp.id
+        INNER JOIN
+            rack r ON rp.rack_id = r.id
+        WHERE
+            ip.item_id IN ({','.join('?'*len(item_ids))});
+        """
+        
+        cursor.execute(query, item_ids)
         results = cursor.fetchall()
         
-        # Populate the results dictionary
         for item_id, rack_name, position_label in results:
             results_dict[item_id] = (rack_name, position_label)
             
     except sqlite3.Error as e:
         print(f"Database error: {e}")
+        
     finally:
-        # Ensure the database connection is closed
         if conn:
             conn.close()
     
-    # Sort the dictionary by the rack part first, then the label part
-    # and return the sorted dictionary
     return {k: v for k, v in sorted(results_dict.items(), key=lambda item: (item[1][0], item[1][1]))}
 
 def update_item_quantity(item_id, subtract_amount):
-    conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
-    cursor = conn.cursor()
-    
+    conn = None
     try:
-        # Fetch the current quantity of the item
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+        
         cursor.execute('SELECT quantity FROM item WHERE id = ?', (item_id,))
         result = cursor.fetchone()
         
@@ -94,49 +123,43 @@ def update_item_quantity(item_id, subtract_amount):
         
         new_quantity = current_quantity - subtract_amount
         
-        # Update the item with the new quantity
         cursor.execute('UPDATE item SET quantity = ? WHERE id = ?', (new_quantity, item_id))
         conn.commit()
     
     except sqlite3.Error as e:
         print("An error occurred:", e)
-        conn.rollback()  # Rollback any changes if something goes wrong
+        conn.rollback()
     
     finally:
-        # Always close the connection to the database
-        conn.close()
+        if conn:
+            conn.close()
 
 def get_user_details():
-    conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/employee_info.db')
-    cursor = conn.cursor()
-
+    conn = None
     try:
-        # Select all user details from the employee table
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/employee_info.db')
+        cursor = conn.cursor()
+
         cursor.execute("SELECT * FROM employee")
         employees = cursor.fetchall()
-
-        # Close the cursor and connection
-        cursor.close()
-        conn.close()
 
         return employees
 
     except sqlite3.Error as e:
         print("Error fetching employee details:", e)
+        return []
+
+    finally:
+        if conn:
+            conn.close()
 
 def add_user(name, uid, role):
     try:
-        # Connect to the SQLite database
         conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/employee_info.db')
         cursor = conn.cursor()
 
-        # Insert new user data
         cursor.execute("INSERT INTO employee (name, uid, role) VALUES (?, ?, ?)", (name, uid, role))
         conn.commit()
-
-        # Close the cursor and connection
-        cursor.close()
-        conn.close()
 
         return True, "User added successfully."
 
@@ -153,19 +176,115 @@ def add_user(name, uid, role):
     except sqlite3.Error as e:
         return False, f"Error adding user: {e}"
 
+    finally:
+        if conn:
+            conn.close()
+
 def remove_user_by_id(employee_id):
-    conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/employee_info.db')
-    cursor = conn.cursor()
+    conn = None
     try:
-        # Remove the employee with the specified ID
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/employee_info.db')
+        cursor = conn.cursor()
+
         cursor.execute("DELETE FROM employee WHERE id = ?", (employee_id,))
         conn.commit()
-
-        # Close the cursor and connection
-        cursor.close()
-        conn.close()
 
         print(f"Employee with ID {employee_id} removed successfully.")
 
     except sqlite3.Error as e:
         print("Error removing employee:", e)
+
+    finally:
+        if conn:
+            conn.close()
+
+def add_category(name):
+    conn = None
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("INSERT INTO category (name) VALUES (?)", (name,))
+        conn.commit()
+
+        print(f"Category '{name}' added successfully.")
+        return True, f"Category '{name}' added successfully."
+
+    except sqlite3.IntegrityError:
+        error_message = f"Category '{name}' already exists."
+        print(error_message)
+        return False, error_message
+
+    except sqlite3.Error as e:
+        error_message = f"Error adding category: {e}"
+        print(error_message)
+        return False, error_message
+
+    finally:
+        cursor.close()
+        conn.close()
+
+def delete_category_by_id(category_id):
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM category WHERE id = ?", (category_id,))
+        conn.commit()
+
+        print(f"Category with ID {category_id} deleted successfully.")
+        return True, f"Category with ID {category_id} deleted successfully."
+
+    except sqlite3.Error as e:
+        error_message = f"Error deleting category: {e}"
+        print(error_message)
+        return False, error_message
+
+    finally:
+        cursor.close()
+        conn.close()
+
+def add_item(category_id, item, quantity=0):
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("INSERT INTO item (category_id, item_size, quantity) VALUES (?, ?, ?)", (category_id, item, quantity))
+        conn.commit()
+
+        print(f"Item '{item}' added successfully.")
+        return True, f"Item '{item}' added successfully."
+
+    except sqlite3.IntegrityError:
+        error_message = f"Item '{item}' for category ID {category_id} already exists."
+        print(error_message)
+        return False, error_message
+
+    except sqlite3.Error as e:
+        error_message = f"Error adding item: {e}"
+        print(error_message)
+        return False, error_message
+
+    finally:
+        cursor.close()
+        conn.close()
+
+def delete_item_by_id(item_id):
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM item WHERE id = ?", (item_id,))
+        conn.commit()
+
+        print(f"Item with ID {item_id} deleted successfully.")
+        return True, f"Item with ID {item_id} deleted successfully."
+
+    except sqlite3.Error as e:
+        error_message = f"Error deleting item: {e}"
+        print(error_message)
+        return False, error_message
+
+    finally:
+        cursor.close()
+        conn.close()

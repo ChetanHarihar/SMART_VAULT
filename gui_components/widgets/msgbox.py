@@ -16,6 +16,16 @@ def confirm_remove_user():
     # returns true if user presses OK
     return result
 
+def confirm_remove_category():
+    result = messagebox.askokcancel("Confirmation", "Are you sure you want to remove the Category?")
+    # returns true if user presses OK
+    return result
+
+def confirm_remove_item():
+    result = messagebox.askokcancel("Confirmation", "Are you sure you want to remove the Item?")
+    # returns true if user presses OK
+    return result
+
 def show_error_message_box(title, message):
     messagebox.showerror(title, message)
 
