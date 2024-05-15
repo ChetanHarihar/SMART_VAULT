@@ -121,11 +121,11 @@ class AdminPanel(tk.Frame):
         # Item view
         # create dropdown menu to select category
         # Create a variable to store the selected option
-        self.var = tk.StringVar(self.inv_man_frame.item_view_frame)
-        self.var.set(self.category_data[0])  # Set the default option
+        self.var1 = tk.StringVar(self.inv_man_frame.item_view_frame)
+        self.var1.set(self.category_data[0])  # Set the default option
 
         # Create the dropdown menu
-        self.cat_dropdown = ttk.Combobox(self.inv_man_frame.item_view_frame, textvariable=self.var, values=self.category_data)
+        self.cat_dropdown = ttk.Combobox(self.inv_man_frame.item_view_frame, textvariable=self.var1, values=self.category_data)
         self.cat_dropdown.pack()
 
         self.cat_dropdown.bind("<<ComboboxSelected>>", self.show_items)
@@ -152,6 +152,45 @@ class AdminPanel(tk.Frame):
         # category remove button
         self.item_remove_btn = tk.Button(self.inv_man_frame.item_view_frame, text="Remove", command=self.remove_item)
         self.item_remove_btn.pack(pady=(10,0))
+
+        # Item stock view
+        # create dropdown menu to select category
+        # Create a variable to store the selected option
+        self.var2 = tk.StringVar(self.inv_man_frame.stock_main_frame)
+        self.var2.set(self.category_data[0])  # Set the default option
+
+        # Create the dropdown menu
+        self.stock_dropdown = ttk.Combobox(self.inv_man_frame.stock_main_frame, textvariable=self.var2, values=self.category_data)
+        self.stock_dropdown.pack()
+
+        self.stock_dropdown.bind("<<ComboboxSelected>>", self.show_stock)
+
+        self.inv_man_frame.restock_btn.config(command=self.restock)
+
+        self.stock_treeview_frame = tk.Frame(self.inv_man_frame.stock_main_frame)
+        self.stock_treeview_frame.pack(pady=(5,0))
+
+        self.stock_treeview = TreeView(self.stock_treeview_frame, height=8)
+
+        # Create columns
+        self.stock_treeview["columns"] = ("id", "Sl.no", "Items", "Quantity")
+        self.stock_treeview.column("#0", width=0, stretch=tk.NO)  # Hide the cart_tree column
+        self.stock_treeview.column("id", width=0, stretch=tk.NO)  
+        self.stock_treeview.column("Sl.no", width=40, anchor=tk.CENTER)
+        self.stock_treeview.column("Items", width=250, anchor=tk.CENTER)
+        self.stock_treeview.column("Quantity", width=50, anchor=tk.CENTER)
+
+        # Create headings
+        self.stock_treeview.heading("id", text="id")
+        self.stock_treeview.heading("Sl.no", text="Sl.no")
+        self.stock_treeview.heading("Items", text="Items", anchor=tk.CENTER)
+        self.stock_treeview.heading("Quantity", text="Quantity", anchor=tk.CENTER)
+
+        # Bind the select event to the on_select function
+        self.stock_treeview.bind('<<TreeviewSelect>>', self.on_select)
+
+        self.show_stock()
+
 
     def exit(self):
         if msgbox.confirm_exit():
@@ -281,6 +320,41 @@ class AdminPanel(tk.Frame):
                 pass
         # show the updated list
         self.show_items()
+
+    def show_stock(self, event=None):
+        self.delete_treeview_items(self.stock_treeview)
+        selected_cat = self.stock_dropdown.get()
+        # grab all the items from the category
+        item_data = self.item_data[selected_cat]
+        # insert all items in the item Treeview
+        for i, item in enumerate(item_data, start=1):
+            if i % 2 == 0:
+                self.stock_treeview.insert("", "end", values=(f"{item[0]}", f"{i}", f"{item[2]}", f"{item[-1]}"), tags=('evenrow',))
+            else:
+                self.stock_treeview.insert("", "end", values=(f"{item[0]}", f"{i}", f"{item[2]}", f"{item[-1]}"), tags=('oddrow',))
+
+    def on_select(self, event=None):
+        # Get the selected item's data
+        item = self.stock_treeview.focus()
+        if item != '':
+            item_data = self.stock_treeview.item(item, 'values')
+
+            # Clear the label widget
+            self.inv_man_frame.restock_item_name.config(text=item_data[2])
+            self.inv_man_frame.restock_quantity_entry.delete(0, tk.END)
+
+    def restock(self):
+        item = self.stock_treeview.focus()
+        item_data = self.stock_treeview.item(item, 'values')
+        item_id = item_data[0]
+        quantity = self.inv_man_frame.restock_quantity_entry.get()
+        
+        if msgbox.confirm_item_restock():
+            database.restock_item(item_id, int(quantity))
+            self.item_data = database.fetch_all_items(self.category_data)
+            self.show_stock()
+        else:
+            pass
 
 
 # If this file is run directly for testing purposes

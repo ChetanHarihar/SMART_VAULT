@@ -83,13 +83,11 @@ class InventoryManagement(tk.Frame):
         # Create and add tabs
         self.add = ttk.Frame(self.notebook)
         self.manage = ttk.Frame(self.notebook)
-        self.stock_details = ttk.Frame(self.notebook)
-        self.restock = ttk.Frame(self.notebook)
+        self.stock_management = ttk.Frame(self.notebook)
 
         self.notebook.add(self.add, text="Add")
         self.notebook.add(self.manage, text="Manage")
-        self.notebook.add(self.stock_details, text="Stock Details")
-        self.notebook.add(self.restock, text="Restock")
+        self.notebook.add(self.stock_management, text="Stock Management")
 
         # Pack the Notebook widget 
         self.notebook.pack(fill="both", expand=True)
@@ -169,10 +167,45 @@ class InventoryManagement(tk.Frame):
 
         self.mac_view_frame = tk.Frame(self.manage_view_frame)
 
+        self.stock_main_frame = tk.Frame(self.stock_management)
+        self.stock_main_frame.pack()
+
+        # create label frames to restock items
+        self.restock_label_frame = tk.LabelFrame(self.stock_main_frame, text="Restock", width=590, height=70)
+        self.restock_label_frame.pack_propagate(False)
+        self.restock_label_frame.pack(side=tk.BOTTOM, pady=(5,0))
+
+        self.restock_item_label = tk.Label(self.restock_label_frame, text="Item Name:")
+        self.restock_item_label.pack(side="left", padx=(5,5))
+
+        self.restock_item_name = tk.Label(self.restock_label_frame, text="", width=30, anchor='w')
+        self.restock_item_name.pack(side="left", padx=(5,5))
+
+        self.restock_quantity_label = tk.Label(self.restock_label_frame, text="Quantity")
+        self.restock_quantity_label.pack(side="left", padx=(5,5))
+
+        self.restock_quantity_entry = tk.Entry(self.restock_label_frame, width=5)
+        self.restock_quantity_entry.pack(side="left", padx=(5,5))
+
+        self.restock_btn = tk.Button(self.restock_label_frame, text="Restock", command=None)
+        self.restock_btn.pack(side="left", padx=(5,5))
+
+
     def switch_view(self, view):
         for widget in self.manage_view_frame.winfo_children():
             widget.forget()
         view.pack()
+
+
+class ItemPlacementManagement(tk.Frame):
+    def __init__(self, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.config(bg="#E8E9EB", width=600, height=430)
+        self.pack_propagate(False)
+        self.init_ui()
+
+    def init_ui(self):
+        pass
 
 
 # If this file is run directly for testing purposes

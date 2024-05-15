@@ -288,3 +288,27 @@ def delete_item_by_id(item_id):
     finally:
         cursor.close()
         conn.close()
+
+def restock_item(item_id, add_amount):
+    conn = None
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT quantity FROM item WHERE id = ?', (item_id,))
+        result = cursor.fetchone()
+        
+        current_quantity, = result
+        
+        new_quantity = current_quantity + add_amount 
+        
+        cursor.execute('UPDATE item SET quantity = ? WHERE id = ?', (new_quantity, item_id))
+        conn.commit()
+    
+    except sqlite3.Error as e:
+        print("An error occurred:", e)
+        conn.rollback()
+    
+    finally:
+        if conn:
+            conn.close()
