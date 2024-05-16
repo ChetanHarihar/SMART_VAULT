@@ -205,7 +205,36 @@ class ItemPlacementManagement(tk.Frame):
         self.init_ui()
 
     def init_ui(self):
-        pass
+        # Create a Notebook widget
+        self.notebook = ttk.Notebook(self)
+
+        # Create and add tabs
+        self.add = ttk.Frame(self.notebook)
+        self.manage = ttk.Frame(self.notebook)
+
+        self.notebook.add(self.add, text="Add")
+        self.notebook.add(self.manage, text="Manage")
+
+        # Pack the Notebook widget 
+        self.notebook.pack(fill="both", expand=True)
+
+        # create label frames for adding racks and item placement details
+        self.rack_label_frame = tk.LabelFrame(self.add, text="Add Rack", width=590, height=70)
+        self.rack_label_frame.pack_propagate(False)
+        self.rack_label_frame.pack(pady=(15,0))
+
+        self.rack_label = tk.Label(self.rack_label_frame, text="Rack Name:")
+        self.rack_label.pack(side="left", padx=(5,5))
+
+        self.rack_entry = tk.Entry(self.rack_label_frame, width=25)
+        self.rack_entry.pack(side="left", padx=(5,5))
+
+        self.rack_add_btn = tk.Button(self.rack_label_frame, text="Add", command=None)
+        self.rack_add_btn.pack(side="left", padx=(5,5))
+
+        self.ip_placement_label_frame = tk.LabelFrame(self.add, text="Item Placement", width=590, height=280)
+        self.ip_placement_label_frame.pack_propagate(False)
+        self.ip_placement_label_frame.pack(pady=(10,0))
 
 
 # If this file is run directly for testing purposes

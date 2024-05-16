@@ -1,3 +1,7 @@
+#!/home/pi/Python/base/bin/python 
+
+# above is the path of the virtual environment
+
 import tkinter as tk
 from tkinter import ttk
 from settings.config import *
