@@ -312,3 +312,51 @@ def restock_item(item_id, add_amount):
     finally:
         if conn:
             conn.close()
+
+def add_rack(name):
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("INSERT INTO rack (name) VALUES (?)", (name,))
+        conn.commit()
+
+        print(f"Rack '{name}' added successfully.")
+        return True, f"Rack '{name}' added successfully."
+
+    except sqlite3.IntegrityError as e:
+        if "UNIQUE constraint failed: rack.name" in str(e):
+            error_message = f"Rack '{name}' already exists."
+        elif "NOT NULL constraint failed: rack.name" in str(e):
+            error_message = "Rack name cannot be left blank."
+        else:
+            error_message = f"Integrity Error: {e}"
+        print(error_message)
+        return False, error_message
+
+    except sqlite3.Error as e:
+        error_message = f"Error adding rack: {e}"
+        print(error_message)
+        return False, error_message
+
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_all_racks():
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM rack")
+        racks = cursor.fetchall()
+
+        return racks
+
+    except sqlite3.Error as e:
+        print(f"Error getting racks: {e}")
+        return None
+
+    finally:
+        cursor.close()
+        conn.close()

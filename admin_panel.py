@@ -17,6 +17,7 @@ class AdminPanel(tk.Frame):
         self.root = master
         self.category_data = database.fetch_categories()
         self.item_data = database.fetch_all_items(self.category_data)
+        self.racks = database.get_all_racks()
         self.rows = ['A', 'B', 'C', 'D', 'E']
         self.cols = ['1', '2', '3', '4', '5', '6']
         self.init_ui()
@@ -194,6 +195,7 @@ class AdminPanel(tk.Frame):
         self.show_stock()
 
         self.ip_man_frame = ItemPlacementManagement(self.frame_container)
+        self.ip_man_frame.rack_add_btn.config(command=self.add_rack)
 
         self.ip_item_treeview_frame = tk.Frame(self.ip_man_frame.ip_placement_label_frame)
         self.ip_item_treeview_frame.pack(pady=(5,0))
@@ -416,6 +418,15 @@ class AdminPanel(tk.Frame):
             self.show_stock()
         else:
             pass
+    
+    def add_rack(self):
+        name = self.ip_man_frame.rack_entry.get()
+        success, message = database.add_rack(name)
+        if success:
+            msgbox.show_success_message_box(message)
+            self.racks = database.get_all_racks()
+        else:
+            msgbox.show_error_message_box("Error", message)
 
     def show_ip_items(self):
         pass
