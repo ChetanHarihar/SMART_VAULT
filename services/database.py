@@ -360,3 +360,26 @@ def get_all_racks():
     finally:
         cursor.close()
         conn.close()
+
+def get_items_not_in_rack_positions():
+    # Connect to the SQLite database
+    conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+    cursor = conn.cursor()
+    
+    # Execute the SQL query
+    cursor.execute('''
+        SELECT item.id, category.name, item.item_size
+        FROM item
+        LEFT JOIN rack_position ON item.id = rack_position.id
+        LEFT JOIN category ON item.category_id = category.id
+        WHERE rack_position.id IS NULL
+    ''')
+    
+    # Fetch all rows from the query result
+    rows = cursor.fetchall()
+    
+    # Close the cursor and connection
+    cursor.close()
+    conn.close()
+    
+    return rows

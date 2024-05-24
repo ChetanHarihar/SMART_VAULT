@@ -17,7 +17,8 @@ class AdminPanel(tk.Frame):
         self.root = master
         self.category_data = database.fetch_categories()
         self.item_data = database.fetch_all_items(self.category_data)
-        self.racks = database.get_all_racks()
+        self.rack_details = database.get_all_racks()
+        self.racks = [name for id, name in database.get_all_racks()]
         self.rows = ['A', 'B', 'C', 'D', 'E']
         self.cols = ['1', '2', '3', '4', '5', '6']
         self.init_ui()
@@ -200,19 +201,24 @@ class AdminPanel(tk.Frame):
         self.ip_item_treeview_frame = tk.Frame(self.ip_man_frame.ip_placement_label_frame)
         self.ip_item_treeview_frame.pack(pady=(5,0))
 
-        self.ip_item_treeview = TreeView(self.ip_item_treeview_frame, height=4)
+        self.ip_item_treeview = TreeView(self.ip_item_treeview_frame, height=2)
 
         # Create columns
-        self.ip_item_treeview["columns"] = ("id", "Sl.no", "Items")
+        self.ip_item_treeview["columns"] = ("id", "Sl.no", "Category", "Items")
         self.ip_item_treeview.column("#0", width=0, stretch=tk.NO)  # Hide the cart_tree column
         self.ip_item_treeview.column("id", width=0, stretch=tk.NO)  
         self.ip_item_treeview.column("Sl.no", width=40, anchor=tk.CENTER)
+        self.ip_item_treeview.column("Category", width=150, anchor=tk.CENTER)
         self.ip_item_treeview.column("Items", width=250, anchor=tk.CENTER)
 
         # Create headings
         self.ip_item_treeview.heading("id", text="id")
         self.ip_item_treeview.heading("Sl.no", text="Sl.no")
+        self.ip_item_treeview.heading("Category", text="Category")
         self.ip_item_treeview.heading("Items", text="Items", anchor=tk.CENTER)
+
+        # Bind the select event to the on_select function
+        self.ip_item_treeview.bind('<<TreeviewSelect>>', self.on_ip_select)
 
         self.show_ip_items()
 
@@ -225,7 +231,19 @@ class AdminPanel(tk.Frame):
         self.ip_item_name = tk.Label(self.ip_widget_frame, text="", width=30)
         self.ip_item_name.grid(row=0, column=1)
 
-        # dropdown to select row and column
+        # dropdown to select rack, row and column
+
+        # create dropdown menu to select rack
+        # Create a variable to store the selected option
+        self.rack = tk.StringVar(self.ip_widget_frame)
+        self.rack.set(self.racks[0])  # Set the default option
+
+        # Create the dropdown menu
+        self.rack_label = tk.Label(self.ip_widget_frame, text='Select Rack')
+        self.rack_label.grid(row=1, column=0)
+
+        self.rack_dropdown = ttk.Combobox(self.ip_widget_frame, textvariable=self.rack, values=self.racks)
+        self.rack_dropdown.grid(row=1, column=1, sticky='w')
 
         # create dropdown menu to select row
         # Create a variable to store the selected option
@@ -233,11 +251,11 @@ class AdminPanel(tk.Frame):
         self.row.set(self.rows[0])  # Set the default option
 
         # Create the dropdown menu
-        self.row_label = tk.Label(self.ip_widget_frame, text='Select Row')
-        self.row_label.grid(row=1, column=0)
+        self.row_label = tk.Label(self.ip_widget_frame, text='Select Row: ')
+        self.row_label.grid(row=2, column=0)
 
-        self.row_dropdown = ttk.Combobox(self.ip_widget_frame, textvariable=self.row, values=self.rows)
-        self.row_dropdown.grid(row=1, column=1)
+        self.row_dropdown = ttk.Combobox(self.ip_widget_frame, textvariable=self.row, values=self.rows, width=5)
+        self.row_dropdown.grid(row=2, column=1, sticky='w')
 
         # create dropdown menu to select column
         # Create a variable to store the selected option
@@ -245,14 +263,14 @@ class AdminPanel(tk.Frame):
         self.col.set(self.cols[0])  # Set the default option
 
         # Create the dropdown menu
-        self.col_label = tk.Label(self.ip_widget_frame, text='Select Column')
-        self.col_label.grid(row=2, column=0)
+        self.col_label = tk.Label(self.ip_widget_frame, text='Select Column: ')
+        self.col_label.grid(row=3, column=0)
 
-        self.col_dropdown = ttk.Combobox(self.ip_widget_frame, textvariable=self.col, values=self.cols)
-        self.col_dropdown.grid(row=2, column=1)
+        self.col_dropdown = ttk.Combobox(self.ip_widget_frame, textvariable=self.col, values=self.cols, width=5)
+        self.col_dropdown.grid(row=3, column=1, sticky='w')
 
         self.place_btn = tk.Button(self.ip_widget_frame, text="Place", command=self.place_item)
-        self.place_btn.grid(row=2, column=2)
+        self.place_btn.grid(row=0, column=3)
 
 
     def exit(self):
@@ -429,11 +447,22 @@ class AdminPanel(tk.Frame):
             msgbox.show_error_message_box("Error", message)
 
     def show_ip_items(self):
-        pass
+        self.delete_treeview_items(self.ip_item_treeview)
+        # grab all the items that are not placed
+        item_data = database.get_items_not_in_rack_positions()
+        # insert all items in the item Treeview
+        for i, item in enumerate(item_data, start=1):
+            if i % 2 == 0:
+                self.ip_item_treeview.insert("", "end", values=(f"{item[0]}", f"{i}", f"{item[1]}", f"{item[2]}"), tags=('evenrow',))
+            else:
+                self.ip_item_treeview.insert("", "end", values=(f"{item[0]}", f"{i}", f"{item[1]}", f"{item[2]}"), tags=('oddrow',))
 
     def place_item(self):
         # check for integrity and place it (update in the database)
         print(self.row.get()+self.col.get())
+
+    def on_ip_select(self, event=None):
+        pass
 
 
 # If this file is run directly for testing purposes
