@@ -350,12 +350,10 @@ class EmployeePanel(tk.Frame):
 
     def pickup(self):
         if len(self.cart) > 0:
-            if msgbox.confirm_pickup():
-                for widget in self.frame_container.winfo_children():
-                    widget.destroy()
-                self.load_pickup_frame()
-            else:
-                pass
+            # confirm pickup msgbox
+            for widget in self.frame_container.winfo_children():
+                widget.destroy()
+            self.load_pickup_frame()
 
     def update_scroll_region(self, event):
         # Update the scroll region to encompass the inner frame

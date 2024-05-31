@@ -3,6 +3,7 @@ from tkinter import ttk
 from settings.config import *
 import os
 from employee_panel import EmployeePanel
+from admin_panel import AdminPanel
 from gui_components.widgets.buttons import RoleButton  
 from gui_components.frames.login_frame import LoginPage
 from gui_components.frames.scan_frames import ScanFrame
@@ -21,7 +22,7 @@ class LoginPanel(tk.Frame):
         self.scan_data = queue.Queue()
         self.user_data = None
         self.employee_panel = EmployeePanel(self.root)
-        self.admin_panel = None
+        self.admin_panel = AdminPanel(self.root)
         self.init_ui()
 
     def init_ui(self):
@@ -87,6 +88,11 @@ class LoginPanel(tk.Frame):
     def load_panel(self):
         if self.role == 1:
             # load admin panel
+            self.destroy()
+            self.admin_panel.user_label.config(text=f"Logged in as: {self.user_data[1]}")
+            self.admin_panel.user_id = self.user_data[0]
+            self.admin_panel.user_name = self.user_data[1]
+            self.admin_panel.pack()
             pass
         elif self.role == 2:
             # load employee panel

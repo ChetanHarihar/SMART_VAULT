@@ -6,6 +6,7 @@ from gui_components.widgets.treeview import TreeView
 from gui_components.widgets.buttons import ExitButton 
 from gui_components.frames.nav_bar import NavBar
 from gui_components.frames.admin_panel_frames import *
+from services.mqtt_functions import connect_mqtt, handle_publish
 from services import database
 from settings.config import *
 
@@ -15,12 +16,16 @@ class AdminPanel(tk.Frame):
         super().__init__(master, **kwargs)
         self.config(width=800, height=480)
         self.root = master
+        self.user_id = None
+        self.user_name = None
         self.category_data = database.fetch_categories()
         self.item_data = database.fetch_all_items(self.category_data)
         self.rack_details = database.get_all_racks()
         self.racks = [name for id, name in database.get_all_racks()]
         self.rows = ['A', 'B', 'C', 'D', 'E']
         self.cols = ['1', '2', '3', '4', '5', '6']
+        # Connect ot MQTT Server
+        self.mqtt_client = connect_mqtt(mqtt_server=MQTT_SERVER, mqtt_port=MQTT_PORT)
         self.init_ui()
 
     def init_ui(self):
@@ -68,12 +73,16 @@ class AdminPanel(tk.Frame):
         self.emp_man_frame.add_btn.config(command=self.add_user)
         self.emp_man_frame.pack()
 
+        self.view_user_labelframe = tk.LabelFrame(self.emp_man_frame, text="View Users")
+        self.view_user_labelframe.pack()
+
         # create tree view to display the list of users
         # Create a frame to pack the cart treeview
-        self.user_treeview_frame = tk.Frame(self.emp_man_frame)
+        self.user_treeview_frame = tk.Frame(self.view_user_labelframe, width=585, height=210)
+        self.user_treeview_frame.pack_propagate(False)
         self.user_treeview_frame.pack()
 
-        self.user_treeview = TreeView(self.user_treeview_frame, height=9)
+        self.user_treeview = TreeView(self.user_treeview_frame, height=7)
 
         # Create columns
         self.user_treeview["columns"] = ("ID", "User Name", "UID", "Role")
@@ -93,7 +102,7 @@ class AdminPanel(tk.Frame):
 
         # remove button
         self.remove_btn = tk.Button(self.emp_man_frame, text="Remove", command=self.remove_user)
-        self.remove_btn.pack()
+        self.remove_btn.pack(pady=(10, 0))
 
         self.inv_man_frame = InventoryManagement(self.frame_container)
         self.inv_man_frame.cat_add_btn.config(command=self.add_cat)
@@ -228,7 +237,7 @@ class AdminPanel(tk.Frame):
         self.ip_item_label = tk.Label(self.ip_widget_frame, text="Item Name:")
         self.ip_item_label.grid(row=0, column=0)
 
-        self.ip_item_name = tk.Label(self.ip_widget_frame, text="", width=30)
+        self.ip_item_name = tk.Label(self.ip_widget_frame, text="", width=30, anchor='w')
         self.ip_item_name.grid(row=0, column=1)
 
         # dropdown to select rack, row and column
@@ -429,10 +438,16 @@ class AdminPanel(tk.Frame):
         item_data = self.stock_treeview.item(item, 'values')
         item_id = item_data[0]
         quantity = self.inv_man_frame.restock_quantity_entry.get()
+
+        placement_info = database.get_rack_and_position((item_id, ))
+        data = tuple(placement_info.values())[0]
+        rack, pos_label = data
+        self.open_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
         
         if msgbox.confirm_item_restock():
             database.restock_item(item_id, int(quantity))
             self.item_data = database.fetch_all_items(self.category_data)
+            self.close_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
             self.show_stock()
         else:
             pass
@@ -459,10 +474,47 @@ class AdminPanel(tk.Frame):
 
     def place_item(self):
         # check for integrity and place it (update in the database)
-        print(self.row.get()+self.col.get())
-
+        rack = self.rack.get()
+        label = self.row.get()+self.col.get()
+        print('Rack:', rack)
+        print('Label:', label.strip())
+        item = self.ip_item_treeview.focus()
+        if item != '':
+            item_data = self.ip_item_treeview.item(item, 'values')
+            item_id = item_data[0]
+            # write the placement data to the database
+        
     def on_ip_select(self, event=None):
-        pass
+        # display the name of the item in the item label
+        item = self.ip_item_treeview.focus()
+        if item != '':
+            item_data = self.ip_item_treeview.item(item, 'values')
+            print(item_data)
+        self.ip_item_name.config(text=item_data[-1].strip())
+
+    def open_item(self, client, topic, pos_label):
+        """
+        Opens an item by sending an MQTT message.
+
+        Args:
+            client: The MQTT client used for publishing.
+            topic: The topic to which the message will be published.
+            pos_label: The position label of the item to be opened.
+        """
+        open_message = f"('{pos_label}', 1)"
+        handle_publish(client=client, topic=f"smart_vault/{topic}", message=open_message)
+
+    def close_item(self, client, topic, pos_label):
+        """
+        Closes an item by sending an MQTT message.
+
+        Args:
+            client: The MQTT client used for publishing.
+            topic: The topic to which the message will be published.
+            pos_label: The position label of the item to be closed.
+        """
+        close_message = f"('{pos_label}', 0)"
+        handle_publish(client=client, topic=f"smart_vault/{topic}", message=close_message)
 
 
 # If this file is run directly for testing purposes

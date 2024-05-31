@@ -27,7 +27,7 @@ def confirm_remove_item():
     return result
 
 def confirm_item_restock():
-    result = messagebox.askokcancel("Confirmation", "Are the Items added confirm Restock?")
+    result = messagebox.askokcancel("Confirmation", "Are the Items added, confirm restock?")
     # returns true if user presses OK
     return result
 
