@@ -236,6 +236,32 @@ class ItemPlacementManagement(tk.Frame):
         self.ip_placement_label_frame.pack_propagate(False)
         self.ip_placement_label_frame.pack(pady=(10,0))
 
+        self.manage_main_frame = tk.Frame(self.manage)
+        self.manage_main_frame.pack_propagate(False)
+        self.manage_main_frame.pack(fill="both", expand=True)
+
+        self.manage_btns_frame = tk.Frame(self.manage_main_frame)
+        self.manage_btns_frame.pack()
+
+        self.rack_view_btn = tk.Button(self.manage_btns_frame, text="View Racks", command=lambda: self.switch_view(self.rack_view_frame))
+        self.rack_view_btn.pack(side='left')
+
+        self.placement_view_btn = tk.Button(self.manage_btns_frame, text="View Placement", command=lambda: self.switch_view(self.placement_view_frame))
+        self.placement_view_btn.pack(side='left')
+
+        self.manage_view_frame = tk.Frame(self.manage_main_frame)
+        self.manage_view_frame.pack(pady=(10,10))
+
+        self.rack_view_frame = tk.Frame(self.manage_view_frame)
+        self.rack_view_frame.pack()
+
+        self.placement_view_frame = tk.Frame(self.manage_view_frame)
+
+    def switch_view(self, view):
+        for widget in self.manage_view_frame.winfo_children():
+            widget.forget()
+        view.pack()
+
 
 # If this file is run directly for testing purposes
 if __name__ == "__main__":

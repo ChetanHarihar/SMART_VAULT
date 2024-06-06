@@ -1,4 +1,5 @@
 import sqlite3
+import re
 
 def fetch_categories():
     try:
@@ -383,3 +384,327 @@ def get_items_not_in_rack_positions():
     conn.close()
     
     return rows
+
+def get_items_not_in_placement():
+    try:
+        # Connect to the SQLite database
+        conn = sqlite3.connect('smartvault.db')
+        cursor = conn.cursor()
+        
+        # Execute the SQL query
+        cursor.execute('''
+            SELECT item.id, category.name, item.item_size
+            FROM item
+            LEFT JOIN category ON item.category_id = category.id
+            LEFT JOIN item_placement ON item.id = item_placement.item_id
+            WHERE item_placement.item_id IS NULL
+        ''')
+        
+        # Fetch all rows from the query result
+        rows = cursor.fetchall()
+    
+    except sqlite3.Error as e:
+        print(f"An error occurred: {e}")
+        rows = []
+    
+    finally:
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
+    
+    return rows
+
+def delete_rack_by_id(rack_id):
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM rack WHERE id = ?", (rack_id,))
+        conn.commit()
+
+        print(f"Rack with ID {rack_id} deleted successfully.")
+        return True, f"Rack with ID {rack_id} deleted successfully."
+
+    except sqlite3.Error as e:
+        error_message = f"Error deleting rack: {e}"
+        print(error_message)
+        return False, error_message
+
+    finally:
+        cursor.close()
+        conn.close()
+
+# def get_items_in_rack(rack_id):
+#     # Connect to the SQLite database using the absolute path
+#     db_path = '/home/pi/Python/SMART_VAULT/smartvault.db'
+#     conn = sqlite3.connect(db_path)
+#     cursor = conn.cursor()
+    
+#     # SQL query to join the tables and retrieve the specified fields for a specific rack
+#     query = '''
+#     SELECT
+#         category.name AS category,
+#         item.item_size,
+#         item.quantity,
+#         rack_position.id AS rack_position_id,
+#         rack_position.position_label,
+#         item_placement.id AS item_placement_id
+#     FROM
+#         item_placement
+#     JOIN
+#         item ON item_placement.item_id = item.id
+#     JOIN
+#         category ON item.category_id = category.id
+#     JOIN
+#         rack_position ON item_placement.rack_position_id = rack_position.id
+#     JOIN
+#         rack ON rack_position.rack_id = rack.id
+#     WHERE
+#         rack.id = ?
+#     '''
+    
+#     # Execute the query with the specified rack_id
+#     cursor.execute(query, (rack_id,))
+    
+#     # Fetch all the results
+#     results = cursor.fetchall()
+    
+#     # Close the connection
+#     conn.close()
+    
+#     return results
+
+def get_items_in_rack(rack_id):
+    # Connect to the SQLite database using the absolute path
+    db_path = '/home/pi/Python/SMART_VAULT/smartvault.db'
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # SQL query to join the tables and retrieve the specified fields for a specific rack
+    query = '''
+    SELECT
+        category.name AS category,
+        item.item_size,
+        item.quantity,
+        rack_position.id AS rack_position_id,
+        rack_position.position_label,
+        item_placement.id AS item_placement_id
+    FROM
+        item_placement
+    JOIN
+        item ON item_placement.item_id = item.id
+    JOIN
+        category ON item.category_id = category.id
+    JOIN
+        rack_position ON item_placement.rack_position_id = rack_position.id
+    JOIN
+        rack ON rack_position.rack_id = rack.id
+    WHERE
+        rack.id = ?
+    '''
+    
+    # Execute the query with the specified rack_id
+    cursor.execute(query, (rack_id,))
+    
+    # Fetch all the results
+    results = cursor.fetchall()
+    
+    # Close the connection
+    conn.close()
+
+    # Custom sort function for position labels
+    def sort_key(label):
+        match = re.match(r"([A-Z]+)(\d+)", label)
+        if match:
+            letter, number = match.groups()
+            return (letter, int(number))
+        return (label, 0)  # In case of unexpected label format, sort them to the end
+
+    # Sort the results based on the rack_position.position_label
+    sorted_results = sorted(results, key=lambda x: sort_key(x[4]))
+    
+    return sorted_results
+
+def delete_item_placement_by_id(item_placement_id):
+    try:
+        # Connect to the SQLite database using the absolute path
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+        
+        # SQL query to delete a row from item_placement based on the id
+        cursor.execute("DELETE FROM item_placement WHERE id = ?", (item_placement_id,))
+        conn.commit()
+        
+        print(f"Item placement with ID {item_placement_id} deleted successfully.")
+        return True, f"Item placement with ID {item_placement_id} deleted successfully."
+    
+    except sqlite3.Error as e:
+        error_message = f"Error deleting item placement: {e}"
+        print(error_message)
+        return False, error_message
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+# def add_rack_position(rack_id, position_label):
+#     try:
+#         conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+#         cursor = conn.cursor()
+
+#         cursor.execute("INSERT INTO rack_position (rack_id, position_label) VALUES (?, ?)", (rack_id, position_label))
+#         conn.commit()
+
+#         print(f"Position '{position_label}' added successfully to rack ID {rack_id}.")
+#         return True, f"Position '{position_label}' added successfully to rack ID {rack_id}."
+
+#     except sqlite3.IntegrityError as e:
+#         if "UNIQUE constraint failed: rack_position.rack_id, rack_position.position_label" in str(e):
+#             error_message = f"Position '{position_label}' already exists in rack ID {rack_id}."
+#         elif "FOREIGN KEY constraint failed" in str(e):
+#             error_message = f"Rack ID {rack_id} does not exist."
+#         elif "NOT NULL constraint failed" in str(e):
+#             error_message = "Position label cannot be left blank."
+#         else:
+#             error_message = f"Integrity Error: {e}"
+#         print(error_message)
+#         return False, error_message
+
+#     except sqlite3.Error as e:
+#         error_message = f"Error adding rack position: {e}"
+#         print(error_message)
+#         return False, error_message
+
+#     finally:
+#         cursor.close()
+#         conn.close()
+
+def add_rack_position(rack_id, position_label):
+    conn = None
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("INSERT INTO rack_position (rack_id, position_label) VALUES (?, ?)", (rack_id, position_label))
+        conn.commit()
+
+        new_id = cursor.lastrowid
+
+        print(f"Position '{position_label}' added successfully to rack ID {rack_id} with position ID {new_id}.")
+        return True, f"Position '{position_label}' added successfully to rack ID {rack_id} with position ID {new_id}.", new_id
+
+    except sqlite3.IntegrityError as e:
+        if "UNIQUE constraint failed: rack_position.rack_id, rack_position.position_label" in str(e):
+            error_message = f"Position '{position_label}' already exists in rack ID {rack_id}."
+        elif "FOREIGN KEY constraint failed" in str(e):
+            error_message = f"Rack ID {rack_id} does not exist."
+        elif "NOT NULL constraint failed" in str(e):
+            error_message = "Position label cannot be left blank."
+        else:
+            error_message = f"Integrity Error: {e}"
+        print(error_message)
+        return False, error_message, None
+
+    except sqlite3.Error as e:
+        error_message = f"Error adding rack position: {e}"
+        print(error_message)
+        return False, error_message, None
+
+    finally:
+        if conn:
+            cursor.close()
+            conn.close()
+
+def add_item_placement(rack_position_id, item_id):
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        cursor.execute("INSERT INTO item_placement (rack_position_id, item_id) VALUES (?, ?)", (rack_position_id, item_id))
+        conn.commit()
+
+        print(f"Item ID {item_id} placed successfully in rack position ID {rack_position_id}.")
+        return True, f"Item ID {item_id} placed successfully in rack position ID {rack_position_id}."
+
+    except sqlite3.IntegrityError as e:
+        if "UNIQUE constraint failed: item_placement.rack_position_id" in str(e):
+            error_message = f"Rack position ID {rack_position_id} already has an item."
+        elif "UNIQUE constraint failed: item_placement.item_id" in str(e):
+            error_message = f"Item ID {item_id} is already placed in a rack position."
+        elif "FOREIGN KEY constraint failed" in str(e):
+            error_message = f"Invalid rack position ID {rack_position_id} or item ID {item_id}."
+        elif "NOT NULL constraint failed" in str(e):
+            error_message = "Rack position ID and item ID cannot be left blank."
+        else:
+            error_message = f"Integrity Error: {e}"
+        print(error_message)
+        return False, error_message
+
+    except sqlite3.Error as e:
+        error_message = f"Error adding item placement: {e}"
+        print(error_message)
+        return False, error_message
+
+    finally:
+        cursor.close()
+        conn.close()
+
+def add_rack_position_and_item_placement(rack_id, position_label, item_id):
+    conn = None
+    try:
+        conn = sqlite3.connect('/home/pi/Python/SMART_VAULT/smartvault.db')
+        cursor = conn.cursor()
+
+        # Start a transaction
+        cursor.execute("BEGIN TRANSACTION")
+
+        # Insert into rack_position
+        cursor.execute("INSERT INTO rack_position (rack_id, position_label) VALUES (?, ?)", (rack_id, position_label))
+        new_rack_position_id = cursor.lastrowid
+
+        # Insert into item_placement
+        cursor.execute("INSERT INTO item_placement (rack_position_id, item_id) VALUES (?, ?)", (new_rack_position_id, item_id))
+        
+        # Commit the transaction
+        conn.commit()
+
+        success_message = f"Position '{position_label}' added successfully to rack ID {rack_id} and item ID {item_id} placed successfully in rack position ID {new_rack_position_id}."
+        print(success_message)
+        return True, success_message
+
+    except sqlite3.IntegrityError as e:
+        if "UNIQUE constraint failed: rack_position.rack_id, rack_position.position_label" in str(e):
+            error_message = f"Position '{position_label}' already exists in rack ID {rack_id}."
+        elif "UNIQUE constraint failed: item_placement.rack_position_id" in str(e):
+            error_message = f"Rack position ID {new_rack_position_id} already has an item."
+        elif "UNIQUE constraint failed: item_placement.item_id" in str(e):
+            error_message = f"Item ID {item_id} is already placed in a rack position."
+        elif "FOREIGN KEY constraint failed" in str(e):
+            error_message = f"Invalid rack ID {rack_id}, rack position ID {new_rack_position_id}, or item ID {item_id}."
+        elif "NOT NULL constraint failed" in str(e):
+            error_message = "Rack ID, position label, and item ID cannot be left blank."
+        else:
+            error_message = f"Integrity Error: {e}"
+        print(error_message)
+        
+        # Rollback the transaction
+        if conn:
+            conn.rollback()
+        
+        return False, error_message
+
+    except sqlite3.Error as e:
+        error_message = f"Error adding rack position and item placement: {e}"
+        print(error_message)
+
+        # Rollback the transaction
+        if conn:
+            conn.rollback()
+        
+        return False, error_message
+
+    finally:
+        if conn:
+            cursor.close()
+            conn.close()
+            

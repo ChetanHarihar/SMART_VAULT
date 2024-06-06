@@ -281,6 +281,70 @@ class AdminPanel(tk.Frame):
         self.place_btn = tk.Button(self.ip_widget_frame, text="Place", command=self.place_item)
         self.place_btn.grid(row=0, column=3)
 
+        # view racks
+        self.rack_treeview_frame = tk.Frame(self.ip_man_frame.rack_view_frame)
+        self.rack_treeview_frame.pack()
+
+        self.rack_treeview = TreeView(self.rack_treeview_frame, height=9)
+
+        # Create columns
+        self.rack_treeview["columns"] = ("Sl.no", "id", "Rack")
+        self.rack_treeview.column("#0", width=0, stretch=tk.NO) 
+        self.rack_treeview.column("Sl.no", width=50, anchor=tk.CENTER)
+        self.rack_treeview.column("id", width=0, stretch=tk.NO)
+        self.rack_treeview.column("Rack", width=150, anchor=tk.CENTER)
+
+        # Create headings
+        self.rack_treeview.heading("Sl.no", text="Sl.no", anchor=tk.CENTER)
+        self.rack_treeview.heading("Rack", text="Rack", anchor=tk.CENTER)
+
+        self.show_all_racks()
+
+        # category remove button
+        self.rack_remove_btn = tk.Button(self.ip_man_frame.rack_view_frame, text="Remove", command=self.remove_rack)
+        self.rack_remove_btn.pack(pady=(10,0))
+
+        # item placement view
+        # create dropdown menu to select rack
+        # Create a variable to store the selected option
+        self.var1 = tk.StringVar(self.ip_man_frame.rack_view_frame)
+        self.var1.set(self.racks[0])  # Set the default option
+
+        # Create the dropdown menu
+        self.rack_dropdown = ttk.Combobox(self.ip_man_frame.placement_view_frame, textvariable=self.var1, values=self.racks)
+        self.rack_dropdown.pack()
+
+        self.rack_dropdown.bind("<<ComboboxSelected>>", self.show_item_placement_data)
+
+        self.item_placement_treeview_frame = tk.Frame(self.ip_man_frame.placement_view_frame)
+        self.item_placement_treeview_frame.pack()
+
+        self.item_placement_treeview = TreeView(self.item_placement_treeview_frame, height=8)
+
+        # Create columns
+        self.item_placement_treeview["columns"] = ("Sl.no", "Category", "Item", "Quantity", "rp.id", "Position", "ip.id")
+        self.item_placement_treeview.column("#0", width=0, stretch=tk.NO)   
+        self.item_placement_treeview.column("Sl.no", width=40, anchor=tk.CENTER)
+        self.item_placement_treeview.column("Category", width=100, anchor=tk.CENTER)
+        self.item_placement_treeview.column("Item", width=250, anchor=tk.CENTER)
+        self.item_placement_treeview.column("Quantity", width=70, anchor=tk.CENTER)
+        self.item_placement_treeview.column("rp.id", width=0, stretch=tk.NO)  
+        self.item_placement_treeview.column("Position", width=70, anchor=tk.CENTER)
+        self.item_placement_treeview.column("ip.id", width=0, stretch=tk.NO) 
+
+        # Create headings
+        self.item_placement_treeview.heading("Sl.no", text="Sl.no")
+        self.item_placement_treeview.heading("Category", text="Category", anchor=tk.CENTER)
+        self.item_placement_treeview.heading("Item", text="Item", anchor=tk.CENTER)
+        self.item_placement_treeview.heading("Quantity", text="Quantity", anchor=tk.CENTER)
+        self.item_placement_treeview.heading("Position", text="Position", anchor=tk.CENTER)
+
+        self.show_item_placement_data()
+
+        # category remove button
+        self.item_placement_remove_btn = tk.Button(self.ip_man_frame.placement_view_frame, text="Remove", command=self.remove_item_placement)
+        self.item_placement_remove_btn.pack(pady=(10,0))
+
 
     def exit(self):
         if msgbox.confirm_exit():
@@ -338,24 +402,30 @@ class AdminPanel(tk.Frame):
         self.show_user_info()
 
     def add_cat(self):
-        name = self.inv_man_frame.cat_entry.get()
+        name = self.inv_man_frame.cat_entry.get().upper()
         success, message = database.add_category(name)
         if success:
             msgbox.show_success_message_box(message)
             self.category_data = database.fetch_categories()
+            self.cat_dropdown.config(textvariable=self.var1, values=self.category_data)
+            self.stock_dropdown.config(textvariable=self.var2, values=self.category_data)
         else:
             msgbox.show_error_message_box("Error", message)
+        self.show_categories()
 
     def add_item(self):
         cat_name = self.inv_man_frame.cat_item_entry.get().strip().upper()
         cat_id = database.get_category_id_by_name(cat_name)
-        item_name = self.inv_man_frame.item_entry.get()
-        success, message = database.add_item(cat_id, item_name)
-        if success:
-            msgbox.show_success_message_box(message)
-            self.item_data = database.fetch_all_items()
-        else:
-            msgbox.show_error_message_box("Error", message)
+        if cat_id is not None:
+            item_name = self.inv_man_frame.item_entry.get()
+            success, message = database.add_item(cat_id, item_name)
+            if success:
+                msgbox.show_success_message_box(message)
+                self.item_data = database.fetch_all_items(self.category_data)
+            else:
+                msgbox.show_error_message_box("Error", message)
+        self.show_items()
+        self.show_stock()
 
     def add_mac(self):
         pass
@@ -406,6 +476,7 @@ class AdminPanel(tk.Frame):
             item_id = item_values[0]
             if msgbox.confirm_remove_item():
                 database.delete_item_by_id(item_id)
+                self.item_data = database.fetch_all_items(self.category_data)
             else:
                 pass
         # show the updated list
@@ -439,32 +510,38 @@ class AdminPanel(tk.Frame):
         item_id = item_data[0]
         quantity = self.inv_man_frame.restock_quantity_entry.get()
 
-        placement_info = database.get_rack_and_position((item_id, ))
-        data = tuple(placement_info.values())[0]
-        rack, pos_label = data
-        self.open_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
-        
-        if msgbox.confirm_item_restock():
-            database.restock_item(item_id, int(quantity))
-            self.item_data = database.fetch_all_items(self.category_data)
-            self.close_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
-            self.show_stock()
-        else:
-            pass
+        if int(quantity) > 0:
+            placement_info = database.get_rack_and_position((item_id, ))
+            data = tuple(placement_info.values())[0]
+            rack, pos_label = data
+            self.open_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
+            
+            if msgbox.confirm_item_restock():
+                database.restock_item(item_id, int(quantity))
+                self.item_data = database.fetch_all_items(self.category_data)
+                self.close_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
+                self.show_stock()
+            else:
+                pass
     
     def add_rack(self):
         name = self.ip_man_frame.rack_entry.get()
         success, message = database.add_rack(name)
         if success:
             msgbox.show_success_message_box(message)
-            self.racks = database.get_all_racks()
+            self.rack_details = database.get_all_racks()
+            self.racks = [name for id, name in database.get_all_racks()]
+            self.rack_dropdown.config(textvariable=self.rack, values=self.racks)
+            self.rack_details = database.get_all_racks()
+            self.racks = [name for id, name in database.get_all_racks()]
+            self.show_all_racks()
         else:
             msgbox.show_error_message_box("Error", message)
 
     def show_ip_items(self):
         self.delete_treeview_items(self.ip_item_treeview)
         # grab all the items that are not placed
-        item_data = database.get_items_not_in_rack_positions()
+        item_data = database.get_items_not_in_placement()
         # insert all items in the item Treeview
         for i, item in enumerate(item_data, start=1):
             if i % 2 == 0:
@@ -476,13 +553,21 @@ class AdminPanel(tk.Frame):
         # check for integrity and place it (update in the database)
         rack = self.rack.get()
         label = self.row.get()+self.col.get()
-        print('Rack:', rack)
-        print('Label:', label.strip())
+        for id, name in self.rack_details:
+            if name == rack:
+                rack_id = id
         item = self.ip_item_treeview.focus()
         if item != '':
             item_data = self.ip_item_treeview.item(item, 'values')
             item_id = item_data[0]
             # write the placement data to the database
+            success, message = database.add_rack_position_and_item_placement(rack_id, label.strip(), item_id)
+            if success:
+                msgbox.show_success_message_box(message)
+            else:
+                msgbox.show_error_message_box("Error", message)
+            # show the updated list
+        self.show_ip_items()
         
     def on_ip_select(self, event=None):
         # display the name of the item in the item label
@@ -490,7 +575,7 @@ class AdminPanel(tk.Frame):
         if item != '':
             item_data = self.ip_item_treeview.item(item, 'values')
             print(item_data)
-        self.ip_item_name.config(text=item_data[-1].strip())
+            self.ip_item_name.config(text=item_data[-1].strip())
 
     def open_item(self, client, topic, pos_label):
         """
@@ -515,6 +600,63 @@ class AdminPanel(tk.Frame):
         """
         close_message = f"('{pos_label}', 0)"
         handle_publish(client=client, topic=f"smart_vault/{topic}", message=close_message)
+
+    def show_all_racks(self):
+        self.delete_treeview_items(self.rack_treeview)
+        # insert all rack data in the rack Treeview
+        for i, item in enumerate(self.rack_details, start=1):
+            if i % 2 == 0:
+                self.rack_treeview.insert("", "end", values=(f"{i}", f"{item[0]}", f"{item[1]}"), tags=('evenrow',))
+            else:
+                self.rack_treeview.insert("", "end", values=(f"{i}", f"{item[0]}", f"{item[1]}"), tags=('oddrow',))
+
+    def remove_rack(self):
+        # remove the selected item and update the treeview
+        selected_item = self.rack_treeview.focus()
+        if selected_item:
+            item_values = self.rack_treeview.item(selected_item, 'values')
+            print(item_values)
+            # get the id of the item
+            rack_id = item_values[1]
+            if msgbox.confirm_remove_rack():
+                database.delete_rack_by_id(rack_id)
+                self.rack_details = database.get_all_racks()
+                self.racks = [name for id, name in database.get_all_racks()]
+            else:
+                pass
+        # show the updated list
+        self.show_all_racks()
+
+    def show_item_placement_data(self, event=None):
+        self.delete_treeview_items(self.item_placement_treeview)
+        selected_rack = self.rack_dropdown.get()
+        # grab all the items from the category
+        for id, rack_name in self.rack_details:
+            if rack_name == selected_rack:
+                rack_id = id
+                break 
+        placement_data = database.get_items_in_rack(rack_id)
+        # insert all items in the item Treeview
+        for i, data in enumerate(placement_data, start=1):
+            if i % 2 == 0:
+                self.item_placement_treeview.insert("", "end", values=(f"{i}", f"{data[0]}", f"{data[1]}", f"{data[2]}", f"{data[3]}", f"{data[4]}", f"{data[5]}"), tags=('evenrow',))
+            else:
+                self.item_placement_treeview.insert("", "end", values=(f"{i}", f"{data[0]}", f"{data[1]}", f"{data[2]}", f"{data[3]}", f"{data[4]}", f"{data[5]}"), tags=('oddrow',))
+
+    def remove_item_placement(self):
+        # remove the selected item and update the treeview
+        selected_item = self.item_placement_treeview.focus()
+        if selected_item:
+            item_values = self.item_placement_treeview.item(selected_item, 'values')
+            print(item_values)
+            # get the id of the item
+            ip_id = item_values[-1]
+            if msgbox.confirm_remove_ip():
+                database.delete_item_placement_by_id(ip_id)
+            else:
+                pass
+        # show the updated list
+        self.show_item_placement_data()
 
 
 # If this file is run directly for testing purposes
