@@ -263,6 +263,27 @@ class ItemPlacementManagement(tk.Frame):
         view.pack()
 
 
+class TroubleShooting(tk.Frame):
+    def __init__(self, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.config(bg="#E8E9EB", width=600, height=430)
+        self.pack_propagate(False)
+        self.init_ui()
+
+    def init_ui(self):
+        # Create a Notebook widget
+        self.notebook = ttk.Notebook(self)
+
+        # Create and add tabs
+        self.read_card = ttk.Frame(self.notebook)
+        self.actuate = ttk.Frame(self.notebook)
+
+        self.notebook.add(self.read_card, text="Read Card")
+        self.notebook.add(self.actuate, text="Actuate")
+
+        # Pack the Notebook widget 
+        self.notebook.pack(fill="both", expand=True)
+
 # If this file is run directly for testing purposes
 if __name__ == "__main__":
     root = tk.Tk()

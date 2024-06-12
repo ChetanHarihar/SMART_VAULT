@@ -7,8 +7,12 @@ from gui_components.widgets.buttons import ExitButton
 from gui_components.frames.nav_bar import NavBar
 from gui_components.frames.admin_panel_frames import *
 from services.mqtt_functions import connect_mqtt, handle_publish
+from services.rfid_module import scan_rfid
 from services import database
 from settings.config import *
+import queue
+import threading
+card_data = queue.Queue()
 
 
 class AdminPanel(tk.Frame):
@@ -345,6 +349,82 @@ class AdminPanel(tk.Frame):
         self.item_placement_remove_btn = tk.Button(self.ip_man_frame.placement_view_frame, text="Remove", command=self.remove_item_placement)
         self.item_placement_remove_btn.pack(pady=(10,0))
 
+        self.ts_frame = TroubleShooting(self.frame_container)
+
+        self.read_card_label = tk.Label(self.ts_frame.read_card, text="Place the card on the Reader")
+        self.read_card_label.pack(pady=(10,10))
+
+        self.read_card_btn = tk.Button(self.ts_frame.read_card, text="Read Card", command=self.read_card)
+        self.read_card_btn.pack()
+
+        self.widget_container = tk.Frame(self.ts_frame.read_card)
+        self.widget_container.pack()
+
+        self.read_id_label = tk.Label(self.widget_container, text="Card ID:")
+        self.read_id_label.grid(row=0, column=0)
+
+        self.card_id = tk.Label(self.widget_container, text="", width=20)
+        self.card_id.grid(row=0, column=1)
+
+        # Actaute page
+        self.send_message_label = tk.Label(self.ts_frame.actuate, text="Send Message: ")
+        self.send_message_label.pack()
+
+        self.dropdown_contatiner = tk.Frame(self.ts_frame.actuate)
+        self.dropdown_contatiner.pack()
+
+        # dropdown to select rack, row and column
+        # create dropdown menu to select rack
+        # Create a variable to store the selected option
+        self.rack2 = tk.StringVar(self.dropdown_contatiner)
+        self.rack2.set(self.racks[0])  # Set the default option
+
+        # Create the dropdown menu
+        self.rack_label = tk.Label(self.dropdown_contatiner, text='Select Rack')
+        self.rack_label.pack(side=tk.LEFT)
+
+        self.rack_dropdown2 = ttk.Combobox(self.dropdown_contatiner, textvariable=self.rack2, values=self.racks)
+        self.rack_dropdown2.pack(side=tk.LEFT)
+
+        # create dropdown menu to select row
+        # Create a variable to store the selected option
+        self.row2 = tk.StringVar(self.dropdown_contatiner)
+        self.row2.set(self.rows[0])  # Set the default option
+
+        # Create the dropdown menu
+        self.row_label = tk.Label(self.dropdown_contatiner, text='Select Row: ')
+        self.row_label.pack(side=tk.LEFT)
+
+        self.row_dropdown2 = ttk.Combobox(self.dropdown_contatiner, textvariable=self.row2, values=self.rows, width=5)
+        self.row_dropdown2.pack(side=tk.LEFT)
+
+        # create dropdown menu to select column
+        # Create a variable to store the selected option
+        self.col2 = tk.StringVar(self.dropdown_contatiner)
+        self.col2.set(self.cols[0])  # Set the default option
+
+        # Create the dropdown menu
+        self.col_label = tk.Label(self.dropdown_contatiner, text='Select Column: ')
+        self.col_label.pack(side=tk.LEFT)
+
+        self.col_dropdown2 = ttk.Combobox(self.dropdown_contatiner, textvariable=self.col2, values=self.cols, width=5)
+        self.col_dropdown2.pack(side=tk.LEFT)
+
+        # create dropdown menu to select action
+        # Create a variable to store the selected option
+        self.action = tk.StringVar(self.dropdown_contatiner)
+        self.action.set('OPEN')  # Set the default option
+
+        # Create the dropdown menu
+        self.action_label = tk.Label(self.dropdown_contatiner, text='Action: ')
+        self.action_label.pack(side=tk.LEFT)
+
+        self.action_dropdown = ttk.Combobox(self.dropdown_contatiner, textvariable=self.action, values=['OPEN','CLOSE'], width=5)
+        self.action_dropdown.pack(side=tk.LEFT)
+
+        self.send_message_btn = tk.Button(self.ts_frame.actuate, text="Send", command=self.send_msg)
+        self.send_message_btn.pack()
+
 
     def exit(self):
         if msgbox.confirm_exit():
@@ -512,18 +592,25 @@ class AdminPanel(tk.Frame):
 
         if int(quantity) > 0:
             placement_info = database.get_rack_and_position((item_id, ))
-            data = tuple(placement_info.values())[0]
-            rack, pos_label = data
-            self.open_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
+            try:
+                data = tuple(placement_info.values())[0]
+                rack, pos_label = data
+                self.open_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
             
-            if msgbox.confirm_item_restock():
-                database.restock_item(item_id, int(quantity))
-                self.item_data = database.fetch_all_items(self.category_data)
-                self.close_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
-                self.show_stock()
-            else:
+                if msgbox.confirm_item_restock():
+                    database.restock_item(item_id, int(quantity))
+                    self.item_data = database.fetch_all_items(self.category_data)
+                    self.close_item(client=self.mqtt_client, topic=rack, pos_label=pos_label)
+                    self.show_stock()
+                else:
+                    pass
+            
+            except Exception as e:
+                msgbox.show_error_message_box('Error', "Item not placed in the rack")
+
+            finally:
                 pass
-    
+        
     def add_rack(self):
         name = self.ip_man_frame.rack_entry.get()
         success, message = database.add_rack(name)
@@ -657,6 +744,36 @@ class AdminPanel(tk.Frame):
                 pass
         # show the updated list
         self.show_item_placement_data()
+
+    def read_card(self):
+        # Creating and starting the RFID scanning thread
+        scan_thread = threading.Thread(target=scan_rfid, args=(card_data,))
+        scan_thread.start()
+        try:
+            result = card_data.get_nowait()
+            if result[0] == 'Success':
+                uid = result[1]
+                self.card_id.config(text=uid)
+            else: 
+                pass
+        except Exception as e:
+            print(e)
+
+    def send_msg(self):
+        rack = self.rack_dropdown2.get()
+        row = self.row_dropdown2.get()
+        col = self.col_dropdown2.get()
+        action = self.action_dropdown.get()
+
+        print(rack)
+        print(row)
+        print(col)
+        print(action)
+
+        if action == 'OPEN':
+            self.open_item(client=self.mqtt_client, topic=rack, pos_label=row+col)
+        elif action == 'CLOSE':
+            self.close_item(client=self.mqtt_client, topic=rack, pos_label=row+col)
 
 
 # If this file is run directly for testing purposes
