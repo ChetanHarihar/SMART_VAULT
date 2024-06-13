@@ -1,5 +1,9 @@
 # SCREEN DIMENSIONS
 SCREEN_SIZE = "800x480"
+MIN_STOCK = {'DRILL': 20, 'TAP': 10, 'THREAD ROLLER': 10, 'INSERT': 10, 'REAMER': 10, 'HOLDER': 10,}
+EMAIL_SENDER = 'prathapj.ei20@bmsce.ac.in'
+EMAIL_PASSWORD = 'njipmbrcobpjwcim' 
+EMAIL_RECEIVER = 'kushalm518@gmail.com'
 
 # MQTT Broker details
 MQTT_SERVER = '192.168.206.10'

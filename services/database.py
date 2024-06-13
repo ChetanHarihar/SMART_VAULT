@@ -126,6 +126,7 @@ def update_item_quantity(item_id, subtract_amount):
         
         cursor.execute('UPDATE item SET quantity = ? WHERE id = ?', (new_quantity, item_id))
         conn.commit()
+        return new_quantity
     
     except sqlite3.Error as e:
         print("An error occurred:", e)

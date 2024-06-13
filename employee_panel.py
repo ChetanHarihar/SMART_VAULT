@@ -8,6 +8,7 @@ from gui_components.widgets import msgbox
 from services import database
 from services.mqtt_functions import connect_mqtt, handle_publish
 from services.data_logger import log_data
+from services.email_sender import restock_email
 from settings.config import *
 
 class EmployeePanel(tk.Frame):
@@ -366,8 +367,13 @@ class EmployeePanel(tk.Frame):
                 handle_publish(client=self.mqtt_client, topic=topic, message=message.replace(", 1)", ", 0)"))  # Send close command for current
                 # change the status of the checkbox
                 self.check_checkboxes()
-                log_data(self.data_to_log)
-                database.update_item_quantity(self.update_item_data[0], int(self.update_item_data[1]))
+                q = database.update_item_quantity(self.update_item_data[0], int(self.update_item_data[1]))
+                # check for the min stock
+                print(MIN_STOCK[self.data_to_log[1]])
+                if q < MIN_STOCK[self.data_to_log[1]]:
+                    print('email alert')
+                    msg = f"Restock {self.data_to_log[2]} only {q} left."
+                    restock_email(email_sender=EMAIL_SENDER, email_password=EMAIL_PASSWORD, email_receiver=EMAIL_RECEIVER, subject ='Rectock Alert', message=msg)
             try:
                 item_id, (rack, pos_label) = next(self.session_generator)
                 self.pickup_data_label.config(text=f"Collect {self.pickup_data[str(item_id)][0]}\nat {rack} Quantity = {self.pickup_data[str(item_id)][1]}")
